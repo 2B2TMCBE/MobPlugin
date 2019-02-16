@@ -8,11 +8,11 @@ import cn.nukkit.utils.Config;
 import nukkitcoders.mobplugin.AutoSpawnTask;
 import nukkitcoders.mobplugin.entities.autospawn.AbstractEntitySpawner;
 import nukkitcoders.mobplugin.entities.autospawn.SpawnResult;
-import nukkitcoders.mobplugin.entities.monster.walking.WitherSkeleton;
+import nukkitcoders.mobplugin.entities.monster.jumping.MagmaCube;
 
-public class WitherSkeletonSpawner extends AbstractEntitySpawner {
+public class MagmaCubeSpawner extends AbstractEntitySpawner {
 
-    public WitherSkeletonSpawner(AutoSpawnTask spawnTask, Config pluginConfig) {
+    public MagmaCubeSpawner(AutoSpawnTask spawnTask, Config pluginConfig) {
         super(spawnTask, pluginConfig);
     }
 
@@ -20,24 +20,24 @@ public class WitherSkeletonSpawner extends AbstractEntitySpawner {
     public SpawnResult spawn(Player player, Position pos, Level level) {
         SpawnResult result = SpawnResult.OK;
 
-        int blockId = level.getBlockIdAt((int) pos.x, (int) pos.y, (int) pos.z);
         int biomeId = level.getBiomeId((int) pos.x, (int) pos.z);
+        int blockId = level.getBlockIdAt((int) pos.x, (int) pos.y, (int) pos.z);
 
-        if (pos.y > 127 || pos.y < 1 || blockId == Block.AIR) {
-            result = SpawnResult.POSITION_MISMATCH;
-        } else if (biomeId != 8) {
+        if (biomeId != 8) {
             result = SpawnResult.WRONG_BIOME;
         } else if (blockId != Block.NETHERRACK) {
             result = SpawnResult.WRONG_BLOCK;
+        } else if (pos.y > 127 || pos.y < 1 || blockId == Block.AIR) {
+            result = SpawnResult.POSITION_MISMATCH;
         } else {
-            this.spawnTask.createEntity("WitherSkeleton", pos.add(0, 1, 0));
+            this.spawnTask.createEntity("MagmaCube", pos.add(0, 1, 0));
         }
 
         return result;
     }
 
     @Override
-    public int getEntityNetworkId() {
-        return WitherSkeleton.NETWORK_ID;
+    public final int getEntityNetworkId() {
+        return MagmaCube.NETWORK_ID;
     }
 }

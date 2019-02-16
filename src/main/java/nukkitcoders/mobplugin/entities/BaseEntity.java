@@ -43,8 +43,6 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
 
     private boolean friendly = false;
 
-    private boolean wallcheck = true;
-
     protected List<Block> blocksAround = new ArrayList<>();
 
     protected List<Block> collisionBlocks = new ArrayList<>();
@@ -86,20 +84,12 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
         return this.attackTime > 0;
     }
 
-    public boolean isWallCheck() {
-        return this.wallcheck;
-    }
-
     public void setFriendly(boolean bool) {
         this.friendly = bool;
     }
 
     public void setMovement(boolean value) {
         this.movement = value;
-    }
-
-    public void setWallCheck(boolean value) {
-        this.wallcheck = value;
     }
 
     public double getSpeed() {
@@ -156,10 +146,6 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
             this.setMovement(this.namedTag.getBoolean("Movement"));
         }
 
-        if (this.namedTag.contains("WallCheck")) {
-            this.setWallCheck(this.namedTag.getBoolean("WallCheck"));
-        }
-
         if (this.namedTag.contains("Age")) {
             this.age = this.namedTag.getShort("Age");
         }
@@ -179,7 +165,6 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
 
         this.namedTag.putBoolean("Baby", this.isBaby());
         this.namedTag.putBoolean("Movement", this.isMovement());
-        this.namedTag.putBoolean("WallCheck", this.isWallCheck());
         this.namedTag.putShort("Age", this.age);
     }
 
@@ -202,7 +187,7 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
             this.close();
         }
 
-        if (this instanceof Monster && this.attackDelay < 500) {
+        if (this instanceof Monster && this.attackDelay < 400) {
             this.attackDelay++;
         }
 
@@ -247,17 +232,16 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
         double movZ = dz * moveMultifier;
 
         AxisAlignedBB[] list = this.level.getCollisionCubes(this, this.level.getTickRate() > 1 ? this.boundingBox.getOffsetBoundingBox(dx, dy, dz) : this.boundingBox.addCoord(dx, dy, dz));
-        if (this.isWallCheck()) {
-            for (AxisAlignedBB bb : list) {
-                dx = bb.calculateXOffset(this.boundingBox, dx);
-            }
-            this.boundingBox.offset(dx, 0, 0);
-
-            for (AxisAlignedBB bb : list) {
-                dz = bb.calculateZOffset(this.boundingBox, dz);
-            }
-            this.boundingBox.offset(0, 0, dz);
+        for (AxisAlignedBB bb : list) {
+            dx = bb.calculateXOffset(this.boundingBox, dx);
         }
+        this.boundingBox.offset(dx, 0, 0);
+
+        for (AxisAlignedBB bb : list) {
+            dz = bb.calculateZOffset(this.boundingBox, dz);
+        }
+        this.boundingBox.offset(0, 0, dz);
+
         for (AxisAlignedBB bb : list) {
             dy = bb.calculateYOffset(this.boundingBox, dy);
         }
@@ -289,42 +273,7 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
     public Item[] getDrops() {
         if (this.hasCustomName()) {
             return new Item[]{Item.get(Item.NAME_TAG, 0, 1)};
-        } else {
-            return new Item[0];
         }
-    }
-
-    @Override
-    public void knockBack(Entity attacker, double damage, double x, double z) {
-        this.knockBack(attacker, damage, x, z, 0.1);
-    }
-
-    @Override
-    public void knockBack(Entity attacker, double damage, double x, double z, double base) {
-        if (inKnockback.get()) return;
-        inKnockback.set(true);
-        server.getScheduler().scheduleDelayedTask(MobPlugin.getInstance(), () -> inKnockback.compareAndSet(true, false), 10);
-
-        double f = Math.sqrt(x * x + z * z);
-        if (f <= 0) {
-            return;
-        }
-
-        f = 1 / f;
-
-        Vector3 motion = new Vector3(this.motionX, this.motionY, this.motionZ);
-
-        motion.x /= 2d;
-        motion.y /= 2d;
-        motion.z /= 2d;
-        motion.x += x * f * base;
-        motion.y += base;
-        motion.z += z * f * base;
-
-        if (motion.y > base) {
-            motion.y = base;
-        }
-
-        this.setMotion(motion);
+        return new Item[0];
     }
 }

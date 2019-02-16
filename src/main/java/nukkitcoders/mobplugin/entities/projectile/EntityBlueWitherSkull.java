@@ -1,5 +1,7 @@
 package nukkitcoders.mobplugin.entities.projectile;
 
+import cn.nukkit.event.entity.ExplosionPrimeEvent;
+import nukkitcoders.mobplugin.utils.FireBallExplosion;
 import nukkitcoders.mobplugin.utils.Utils;
 import cn.nukkit.entity.Entity;
 import cn.nukkit.entity.projectile.EntityProjectile;
@@ -76,28 +78,33 @@ public class EntityBlueWitherSkull extends EntityProjectile {
 
         this.timing.startTiming();
 
-        boolean hasUpdate = super.onUpdate(currentTick);
+        if (this.age > 1200 || this.hadCollision) {
+            if (this.canExplode) {
+                ExplosionPrimeEvent ev = new ExplosionPrimeEvent(this, 1);
+                this.server.getPluginManager().callEvent(ev);
 
-        if (this.age > 1200 || this.isCollided) {
+                if (!ev.isCancelled()) {
+                    FireBallExplosion explosion = new FireBallExplosion(this, (float) ev.getForce(), this.shootingEntity);
+                    if (ev.isBlockBreaking()) {
+                        explosion.explodeA();
+                    }
+                    explosion.explodeB();
+                }
+            }
+
             this.kill();
         } else {
             this.level.addParticle(new SmokeParticle(this.add(this.getWidth() / 2 + Utils.rand(-100, 100) / 500, this.getHeight() / 2 + Utils.rand(-100, 100) / 500, this.getWidth() / 2 + Utils.rand(-100, 100) / 500)));
         }
 
-        hasUpdate = true;
+        this.timing.stopTiming();
 
-        this.timing.startTiming();
-
-        return hasUpdate;
+        return super.onUpdate(currentTick);
     }
 
     @Override
     public void onCollideWithEntity(Entity entity) {
         super.onCollideWithEntity(entity);
-        
-        Effect wither = Effect.getEffect(Effect.WITHER);
-        wither.setAmplifier(1);
-        wither.setDuration(140);
-        entity.addEffect(wither);
+        entity.addEffect(Effect.getEffect(Effect.WITHER).setAmplifier(1).setDuration(140));
     }
 }
