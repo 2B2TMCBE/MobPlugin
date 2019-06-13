@@ -6,6 +6,7 @@ import cn.nukkit.level.Level;
 import cn.nukkit.level.Position;
 import cn.nukkit.utils.Config;
 import nukkitcoders.mobplugin.AutoSpawnTask;
+import nukkitcoders.mobplugin.MobPlugin;
 import nukkitcoders.mobplugin.entities.autospawn.AbstractEntitySpawner;
 import nukkitcoders.mobplugin.entities.autospawn.SpawnResult;
 import nukkitcoders.mobplugin.entities.monster.walking.Skeleton;
@@ -15,8 +16,8 @@ import nukkitcoders.mobplugin.entities.monster.walking.Skeleton;
  */
 public class SkeletonSpawner extends AbstractEntitySpawner {
 
-    public SkeletonSpawner(AutoSpawnTask spawnTask, Config pluginConfig) {
-        super(spawnTask, pluginConfig);
+    public SkeletonSpawner(AutoSpawnTask spawnTask) {
+        super(spawnTask);
     }
 
     @Override
@@ -26,17 +27,16 @@ public class SkeletonSpawner extends AbstractEntitySpawner {
         int blockId = level.getBlockIdAt((int) pos.x, (int) pos.y, (int) pos.z);
         int blockLightLevel = level.getBlockLightAt((int) pos.x, (int) pos.y, (int) pos.z);
         int biomeId = level.getBiomeId((int) pos.x, (int) pos.z);
-        int time = level.getTime() % Level.TIME_FULL;
 
         if (Block.transparent[blockId]) {
             result = SpawnResult.WRONG_BLOCK;
         } else if (blockLightLevel > 7) {
             result = SpawnResult.WRONG_LIGHTLEVEL;
-        } else if (pos.y > 127 || pos.y < 1 || blockId == Block.AIR) {
+        } else if ((pos.y > 255 || (level.getName().equals("nether") && pos.y > 127)) || pos.y < 1 || blockId == Block.AIR) {
             result = SpawnResult.POSITION_MISMATCH;
         } else if (biomeId == 8) {
             result = SpawnResult.WRONG_BIOME;
-        } else if (time > 13184 && time < 22800) {
+        } else if (MobPlugin.getInstance().isMobSpawningAllowedByTime(level)) {
             this.spawnTask.createEntity("Skeleton", pos.add(0, 1, 0));
         }
 

@@ -12,8 +12,8 @@ import nukkitcoders.mobplugin.entities.monster.jumping.MagmaCube;
 
 public class MagmaCubeSpawner extends AbstractEntitySpawner {
 
-    public MagmaCubeSpawner(AutoSpawnTask spawnTask, Config pluginConfig) {
-        super(spawnTask, pluginConfig);
+    public MagmaCubeSpawner(AutoSpawnTask spawnTask) {
+        super(spawnTask);
     }
 
     @Override
@@ -27,7 +27,7 @@ public class MagmaCubeSpawner extends AbstractEntitySpawner {
             result = SpawnResult.WRONG_BIOME;
         } else if (blockId != Block.NETHERRACK) {
             result = SpawnResult.WRONG_BLOCK;
-        } else if (pos.y > 127 || pos.y < 1 || blockId == Block.AIR) {
+        } else if ((pos.y > 255 || (level.getName().equals("nether") && pos.y > 127)) || pos.y < 1 || blockId == Block.AIR) {
             result = SpawnResult.POSITION_MISMATCH;
         } else {
             this.spawnTask.createEntity("MagmaCube", pos.add(0, 1, 0));

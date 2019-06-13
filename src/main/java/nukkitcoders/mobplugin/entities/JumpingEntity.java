@@ -64,22 +64,22 @@ public abstract class JumpingEntity extends BaseEntity {
             }
             x = Utils.rand(10, 30);
             z = Utils.rand(10, 30);
-            this.target = this.add(Utils.rand() ? x : -x, Utils.rand(-20, 20) / 10, Utils.rand() ? z : -z);
-        } else if (Utils.rand(1, 410) == 1) {
+            this.target = this.add(Utils.rand() ? x : -x, Utils.rand(-20.0, 20.0) / 10, Utils.rand() ? z : -z);
+        } else if (Utils.rand(1, 100) == 1) {
             x = Utils.rand(10, 30);
             z = Utils.rand(10, 30);
-            this.stayTime = Utils.rand(100, 400);
-            this.target = this.add(Utils.rand() ? x : -x, Utils.rand(-20, 20) / 10, Utils.rand() ? z : -z);
+            this.stayTime = Utils.rand(100, 200);
+            this.target = this.add(Utils.rand() ? x : -x, Utils.rand(-20.0, 20.0) / 10, Utils.rand() ? z : -z);
         } else if (this.moveTime <= 0 || this.target == null) {
             x = Utils.rand(20, 100);
             z = Utils.rand(20, 100);
             this.stayTime = 0;
-            this.moveTime = Utils.rand(300, 1200);
+            this.moveTime = Utils.rand(100, 200);
             this.target = this.add(Utils.rand() ? x : -x, 0, Utils.rand() ? z : -z);
         }
     }
 
-    protected boolean checkJump(double dx, double dz) {
+    protected boolean checkJump() {
         if (this.motionY == this.getGravity() * 2) {
             return this.level.getBlock(new Vector3(NukkitMath.floorDouble(this.x), (int) this.y, NukkitMath.floorDouble(this.z))) instanceof BlockLiquid;
         } else {
@@ -119,7 +119,6 @@ public abstract class JumpingEntity extends BaseEntity {
 
             if (this.followTarget != null && !this.followTarget.closed && this.followTarget.isAlive()) {
                 double x = this.followTarget.x - this.x;
-                double y = this.followTarget.y - this.y;
                 double z = this.followTarget.z - this.z;
 
                 double diff = Math.abs(x) + Math.abs(z);
@@ -136,8 +135,7 @@ public abstract class JumpingEntity extends BaseEntity {
                         this.motionZ = this.getSpeed() * 0.1 * (z / diff);
                     }
                 }
-                this.yaw = Math.toDegrees(-Math.atan2(x / diff, z / diff));
-                this.pitch = y == 0 ? 0 : Math.toDegrees(-Math.atan2(y, Math.sqrt(x * x + z * z)));
+                if (this.stayTime <= 0 || Utils.rand()) this.yaw = Math.toDegrees(-Math.atan2(x / diff, z / diff));
                 return this.followTarget;
             }
 
@@ -145,7 +143,6 @@ public abstract class JumpingEntity extends BaseEntity {
             this.checkTarget();
             if (this.target instanceof EntityCreature || before != this.target) {
                 double x = this.target.x - this.x;
-                double y = this.target.y - this.y;
                 double z = this.target.z - this.z;
 
                 double diff = Math.abs(x) + Math.abs(z);
@@ -162,13 +159,12 @@ public abstract class JumpingEntity extends BaseEntity {
                         this.motionZ = this.getSpeed() * 0.15 * (z / diff);
                     }
                 }
-                this.yaw = Math.toDegrees(-Math.atan2(x / diff, z / diff));
-                this.pitch = y == 0 ? 0 : Math.toDegrees(-Math.atan2(y, Math.sqrt(x * x + z * z)));
+                if (this.stayTime <= 0 || Utils.rand()) this.yaw = Math.toDegrees(-Math.atan2(x / diff, z / diff));
             }
 
             double dx = this.motionX * tickDiff;
             double dz = this.motionZ * tickDiff;
-            boolean isJump = this.checkJump(dx, dz);
+            boolean isJump = this.checkJump();
             if (this.stayTime > 0) {
                 this.stayTime -= tickDiff;
                 this.move(0, this.motionY * tickDiff, 0);

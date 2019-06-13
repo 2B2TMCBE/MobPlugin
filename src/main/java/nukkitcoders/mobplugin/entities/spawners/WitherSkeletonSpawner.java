@@ -12,8 +12,8 @@ import nukkitcoders.mobplugin.entities.monster.walking.WitherSkeleton;
 
 public class WitherSkeletonSpawner extends AbstractEntitySpawner {
 
-    public WitherSkeletonSpawner(AutoSpawnTask spawnTask, Config pluginConfig) {
-        super(spawnTask, pluginConfig);
+    public WitherSkeletonSpawner(AutoSpawnTask spawnTask) {
+        super(spawnTask);
     }
 
     @Override
@@ -23,7 +23,7 @@ public class WitherSkeletonSpawner extends AbstractEntitySpawner {
         int blockId = level.getBlockIdAt((int) pos.x, (int) pos.y, (int) pos.z);
         int biomeId = level.getBiomeId((int) pos.x, (int) pos.z);
 
-        if (pos.y > 127 || pos.y < 1 || blockId == Block.AIR) {
+        if ((pos.y > 255 || (level.getName().equals("nether") && pos.y > 127)) || pos.y < 1 || blockId == Block.AIR) {
             result = SpawnResult.POSITION_MISMATCH;
         } else if (biomeId != 8) {
             result = SpawnResult.WRONG_BIOME;

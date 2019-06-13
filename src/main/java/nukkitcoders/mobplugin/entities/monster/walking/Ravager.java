@@ -1,30 +1,22 @@
 package nukkitcoders.mobplugin.entities.monster.walking;
 
 import cn.nukkit.Player;
-import cn.nukkit.Server;
 import cn.nukkit.entity.Entity;
 import cn.nukkit.event.entity.EntityDamageByEntityEvent;
 import cn.nukkit.event.entity.EntityDamageEvent;
 import cn.nukkit.item.Item;
 import cn.nukkit.level.format.FullChunk;
 import cn.nukkit.nbt.tag.CompoundTag;
-import cn.nukkit.network.protocol.EntityEventPacket;
-import nukkitcoders.mobplugin.MobPlugin;
 import nukkitcoders.mobplugin.entities.monster.WalkingMonster;
-import nukkitcoders.mobplugin.route.WalkerRouteFinder;
-import nukkitcoders.mobplugin.utils.Utils;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
-public class ZombieVillager extends WalkingMonster {
+public class Ravager extends WalkingMonster {
 
-    public static final int NETWORK_ID = 44;
+    public static final int NETWORK_ID = 59;
 
-    public ZombieVillager(FullChunk chunk, CompoundTag nbt) {
+    public Ravager(FullChunk chunk, CompoundTag nbt) {
         super(chunk, nbt);
-        this.route = new WalkerRouteFinder(this);
     }
 
     @Override
@@ -33,31 +25,31 @@ public class ZombieVillager extends WalkingMonster {
     }
 
     @Override
-    public float getWidth() {
-        return 0.6f;
+    protected void initEntity() {
+        super.initEntity();
+
+        this.setMaxHealth(100);
+        this.setDamage(new float[] { 0, 7, 12, 18 });
     }
 
     @Override
     public float getHeight() {
-        return 1.95f;
+        return 1.9f;
     }
 
     @Override
-    public double getSpeed() {
-        return 1.1;
+    public float getWidth() {
+        return 1.2f;
     }
 
     @Override
-    public void initEntity() {
-        super.initEntity();
-
-        this.setDamage(new float[] { 0, 3, 4, 6 });
-        this.setMaxHealth(20);
+    public int getKillExperience() {
+        return 0;
     }
 
     @Override
     public void attackEntity(Entity player) {
-        if (this.attackDelay > 10 && this.distanceSquared(player) < 1) {
+        if (this.attackDelay > 80 && player.distanceSquared(this) <= 1.5) {
             this.attackDelay = 0;
             HashMap<EntityDamageEvent.DamageModifier, Float> damage = new HashMap<>();
             damage.put(EntityDamageEvent.DamageModifier.BASE, this.getDamage());
@@ -65,7 +57,6 @@ public class ZombieVillager extends WalkingMonster {
             if (player instanceof Player) {
                 @SuppressWarnings("serial")
                 HashMap<Integer, Float> armorValues = new HashMap<Integer, Float>() {
-
                     {
                         put(Item.LEATHER_CAP, 1f);
                         put(Item.LEATHER_TUNIC, 3f);
@@ -95,52 +86,10 @@ public class ZombieVillager extends WalkingMonster {
                     points += armorValues.getOrDefault(i.getId(), 0f);
                 }
 
-                damage.put(EntityDamageEvent.DamageModifier.ARMOR,
-                        (float) (damage.getOrDefault(EntityDamageEvent.DamageModifier.ARMOR, 0f) - Math.floor(damage.getOrDefault(EntityDamageEvent.DamageModifier.BASE, 1f) * points * 0.04)));
+                damage.put(EntityDamageEvent.DamageModifier.ARMOR, (float) (damage.getOrDefault(EntityDamageEvent.DamageModifier.ARMOR, 0f) - Math.floor(damage.getOrDefault(EntityDamageEvent.DamageModifier.BASE, 1f) * points * 0.04)));
             }
+
             player.attack(new EntityDamageByEntityEvent(this, player, EntityDamageEvent.DamageCause.ENTITY_ATTACK, damage));
-            EntityEventPacket pk = new EntityEventPacket();
-            pk.eid = this.getId();
-            pk.event = 4;
-            Server.broadcastPacket(this.getViewers().values(), pk);
         }
-    }
-
-    @Override
-    public boolean entityBaseTick(int tickDiff) {
-        boolean hasUpdate = super.entityBaseTick(tickDiff);
-
-        if (MobPlugin.getInstance().shouldMobBurn(level, this)) {
-            this.setOnFire(100);
-        }
-
-        return hasUpdate;
-    }
-
-    @Override
-    public Item[] getDrops() {
-        List<Item> drops = new ArrayList<>();
-
-        if (this.hasCustomName()) {
-            drops.add(Item.get(Item.NAME_TAG, 0, 1));
-        }
-
-        if (this.lastDamageCause instanceof EntityDamageByEntityEvent && !this.isBaby()) {
-            for (int i = 0; i < Utils.rand(0, 2); i++) {
-                drops.add(Item.get(Item.ROTTEN_FLESH, 0, 1));
-            }
-        }
-
-        return drops.toArray(new Item[0]);
-    }
-
-    @Override
-    public int getKillExperience() {
-        return this.isBaby() ? 0 : 5;
-    }
-
-    @Override
-    public String getName() {
-        return "Zombie Villager";
     }
 }

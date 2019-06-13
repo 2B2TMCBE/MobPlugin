@@ -13,7 +13,6 @@ import cn.nukkit.math.Vector3;
 import cn.nukkit.nbt.tag.CompoundTag;
 import cn.nukkit.network.protocol.AddEntityPacket;
 import cn.nukkit.network.protocol.DataPacket;
-import nukkitcoders.mobplugin.MobPlugin;
 import nukkitcoders.mobplugin.entities.Boss;
 import nukkitcoders.mobplugin.entities.monster.FlyingMonster;
 import nukkitcoders.mobplugin.entities.projectile.EntityBlueWitherSkull;
@@ -77,11 +76,11 @@ public class Wither extends FlyingMonster implements Boss {
             this.attackDelay = 0;
 
             double f = 1;
-            double yaw = this.yaw + Utils.rand(-220, 220) / 10;
-            double pitch = this.pitch + Utils.rand(-120, 120) / 10;
+            double yaw = this.yaw + Utils.rand(-150.0, 150.0) / 10;
+            double pitch = this.pitch + Utils.rand(-75.0, 75.0) / 10;
             Location pos = new Location(this.x - Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)) * 0.5, this.y + this.getEyeHeight(),
                     this.z + Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)) * 0.5, yaw, pitch, this.level);
-            Entity k = MobPlugin.create("BlueWitherSkull", pos, this);
+            Entity k = Entity.createEntity("BlueWitherSkull", pos, this);
             if (!(k instanceof EntityBlueWitherSkull)) {
                 return;
             }

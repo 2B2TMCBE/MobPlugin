@@ -10,7 +10,10 @@ import cn.nukkit.level.format.FullChunk;
 import cn.nukkit.nbt.tag.CompoundTag;
 import nukkitcoders.mobplugin.entities.monster.WalkingMonster;
 import nukkitcoders.mobplugin.utils.Utils;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 public class PolarBear extends WalkingMonster {
 
@@ -82,7 +85,7 @@ public class PolarBear extends WalkingMonster {
         if (this.attackDelay > 10 && this.distanceSquared(player) < 1.44) {
             this.attackDelay = 0;
             HashMap<EntityDamageEvent.DamageModifier, Float> damage = new HashMap<>();
-            damage.put(EntityDamageEvent.DamageModifier.BASE, (float) this.getDamage());
+            damage.put(EntityDamageEvent.DamageModifier.BASE, this.getDamage());
 
             if (player instanceof Player) {
                 @SuppressWarnings("serial")
@@ -147,11 +150,18 @@ public class PolarBear extends WalkingMonster {
 
     @Override
     public Item[] getDrops() {
-        if (this.lastDamageCause instanceof EntityDamageByEntityEvent && !this.isBaby()) {
-            return new Item[]{Item.get(Item.RAW_FISH), Item.get(Item.RAW_SALMON)};
-        } else {
-            return new Item[0];
+        List<Item> drops = new ArrayList<>();
+
+        if (this.hasCustomName()) {
+            drops.add(Item.get(Item.NAME_TAG, 0, 1));
         }
+
+        if (this.lastDamageCause instanceof EntityDamageByEntityEvent && !this.isBaby()) {
+            drops.add(Item.get(Item.RAW_FISH, 0, Utils.rand(0, 2)));
+            drops.add(Item.get(Item.RAW_SALMON, 0, Utils.rand(0, 2)));
+        }
+
+        return drops.toArray(new Item[0]);
     }
 
     @Override

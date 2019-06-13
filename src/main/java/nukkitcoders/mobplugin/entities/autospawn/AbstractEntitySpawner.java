@@ -6,6 +6,7 @@ import cn.nukkit.level.Level;
 import cn.nukkit.level.Position;
 import cn.nukkit.utils.Config;
 import nukkitcoders.mobplugin.AutoSpawnTask;
+import nukkitcoders.mobplugin.MobPlugin;
 import nukkitcoders.mobplugin.utils.Utils;
 
 import java.util.ArrayList;
@@ -22,14 +23,14 @@ public abstract class AbstractEntitySpawner implements IEntitySpawner {
 
     protected Server server;
 
-    protected List<String> disabledSpawnWorlds = new ArrayList<>();
+    private List<String> disabledSpawnWorlds = new ArrayList<>();
 
-    public AbstractEntitySpawner(AutoSpawnTask spawnTask, Config pluginConfig) {
+    public AbstractEntitySpawner(AutoSpawnTask spawnTask) {
         this.spawnTask = spawnTask;
         this.server = Server.getInstance();
-        String disabledWorlds = pluginConfig.getString("entities.worlds-spawn-disabled");
+        String disabledWorlds = MobPlugin.getInstance().pluginConfig.getString("entities.worlds-spawning-disabled");
         if (disabledWorlds != null && !disabledWorlds.trim().isEmpty()) {
-            StringTokenizer tokenizer = new StringTokenizer(disabledWorlds, ",");
+            StringTokenizer tokenizer = new StringTokenizer(disabledWorlds, ", ");
             while (tokenizer.hasMoreTokens()) {
                 disabledSpawnWorlds.add(tokenizer.nextToken());
             }
@@ -39,7 +40,7 @@ public abstract class AbstractEntitySpawner implements IEntitySpawner {
     @Override
     public void spawn(Collection<Player> onlinePlayers) {
         if (isSpawnAllowedByDifficulty()) {
-            SpawnResult lastSpawnResult = null;
+            SpawnResult lastSpawnResult;
             for (Player player : onlinePlayers) {
                 if (isWorldSpawnAllowed (player.getLevel())) {
                     lastSpawnResult = spawn(player);
@@ -57,6 +58,7 @@ public abstract class AbstractEntitySpawner implements IEntitySpawner {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -64,14 +66,12 @@ public abstract class AbstractEntitySpawner implements IEntitySpawner {
         Position pos = player.getPosition();
         Level level = player.getLevel();
 
-        if (this.spawnTask.entitySpawnAllowed(level, getEntityNetworkId())) {
+        if (this.spawnTask.entitySpawnAllowed(level, getEntityNetworkId(), player)) {
             if (pos != null) {
                 pos.x += this.spawnTask.getRandomSafeXZCoord(50, 26, 6);
                 pos.z += this.spawnTask.getRandomSafeXZCoord(50, 26, 6);
                 pos.y = this.spawnTask.getSafeYCoord(level, pos, 3);
-            }
-
-            if (pos == null) {
+            } else {
                 return SpawnResult.POSITION_MISMATCH;
             }
         } else {
@@ -81,8 +81,8 @@ public abstract class AbstractEntitySpawner implements IEntitySpawner {
         return spawn(player, pos, level);
     }
 
-    protected boolean isSpawnAllowedByDifficulty() {
-        int randomNumber = Utils.rand(0, 4);
+    private boolean isSpawnAllowedByDifficulty() {
+        int randomNumber = Utils.rand(0, 3);
 
         switch (this.server.getDifficulty()) {
             case 0:
@@ -91,8 +91,6 @@ public abstract class AbstractEntitySpawner implements IEntitySpawner {
                 return randomNumber <= 1;
             case 2:
                 return randomNumber <= 2;
-            case 3:
-                return true;
             default:
                 return true;
         }

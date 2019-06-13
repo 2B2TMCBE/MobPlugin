@@ -10,7 +10,6 @@ import cn.nukkit.event.entity.EntityShootBowEvent;
 import cn.nukkit.entity.projectile.EntityArrow;
 import cn.nukkit.item.Item;
 import cn.nukkit.item.ItemBow;
-import cn.nukkit.level.Level;
 import cn.nukkit.level.Location;
 import cn.nukkit.level.Sound;
 import cn.nukkit.level.format.FullChunk;
@@ -69,12 +68,9 @@ public class Stray extends WalkingMonster {
 
     @Override
     public boolean entityBaseTick(int tickDiff) {
-        boolean hasUpdate;
+        boolean hasUpdate  = super.entityBaseTick(tickDiff);
 
-        hasUpdate = super.entityBaseTick(tickDiff);
-
-        int time = this.getLevel().getTime() % Level.TIME_FULL;
-        if (!this.isOnFire() && !this.level.isRaining() && (time < 12567 || time > 23450) && !this.isInsideOfWater() && this.level.canBlockSeeSky(this)) {
+        if (MobPlugin.getInstance().shouldMobBurn(level, this)) {
             this.setOnFire(100);
         }
 
@@ -85,13 +81,13 @@ public class Stray extends WalkingMonster {
         if (this.attackDelay > 30 && Utils.rand(1, 32) < 4 && this.distanceSquared(player) <= 55) {
             this.attackDelay = 0;
 
-            double f = 1.2;
-            double yaw = this.yaw + Utils.rand(-220, 220) / 10;
-            double pitch = this.pitch + Utils.rand(-120, 120) / 10;
+            double f = 1.3;
+            double yaw = this.yaw + Utils.rand(-150.0, 150.0) / 10;
+            double pitch = this.pitch + Utils.rand(-75.0, 75.0) / 10;
             Location pos = new Location(this.x - Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)) * 0.5, this.y + this.getHeight() - 0.18,
                     this.z + Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)) * 0.5, yaw, pitch, this.level);
             if (this.getLevel().getBlockIdAt((int)pos.getX(),(int)pos.getY(),(int)pos.getZ()) == Block.AIR) {
-                Entity k = MobPlugin.create("Arrow", pos, this);
+                Entity k = Entity.createEntity("Arrow", pos, this);
                 if (!(k instanceof EntityArrow)) {
                     return;
                 }
@@ -124,17 +120,22 @@ public class Stray extends WalkingMonster {
     @Override
     public Item[] getDrops() {
         List<Item> drops = new ArrayList<>();
+
+        if (this.hasCustomName()) {
+            drops.add(Item.get(Item.NAME_TAG, 0, 1));
+        }
+
         if (this.lastDamageCause instanceof EntityDamageByEntityEvent && !this.isBaby()) {
-            int bones = Utils.rand(0, 3);
-            int arrows = Utils.rand(0, 3);
-            for (int i = 0; i < bones; i++) {
+            for (int i = 0; i < Utils.rand(0, 2); i++) {
                 drops.add(Item.get(Item.BONE, 0, 1));
             }
-            for (int i = 0; i < arrows; i++) {
+
+            for (int i = 0; i < Utils.rand(0, 2); i++) {
                 drops.add(Item.get(Item.ARROW, 0, 1));
             }
         }
-        return drops.toArray(new Item[drops.size()]);
+
+        return drops.toArray(new Item[0]);
     }
 
     @Override

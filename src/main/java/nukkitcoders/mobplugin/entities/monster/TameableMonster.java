@@ -4,6 +4,7 @@ import cn.nukkit.Player;
 import cn.nukkit.Server;
 import cn.nukkit.entity.data.LongEntityData;
 import cn.nukkit.level.format.FullChunk;
+import cn.nukkit.math.Vector3;
 import cn.nukkit.nbt.tag.CompoundTag;
 import nukkitcoders.mobplugin.entities.Tameable;
 
@@ -11,8 +12,6 @@ import nukkitcoders.mobplugin.entities.Tameable;
  * @author <a href="mailto:kniffman@googlemail.com">Michael Gertz</a>
  */
 public abstract class TameableMonster extends WalkingMonster implements Tameable {
-
-    private Server server = null;
 
     private Player owner = null;
 
@@ -22,7 +21,6 @@ public abstract class TameableMonster extends WalkingMonster implements Tameable
 
     public TameableMonster(FullChunk chunk, CompoundTag nbt) {
         super(chunk, nbt);
-        this.server = Server.getInstance();
     }
 
     @Override
@@ -32,8 +30,7 @@ public abstract class TameableMonster extends WalkingMonster implements Tameable
         if (this.namedTag != null) {
             String ownerName = namedTag.getString(NAMED_TAG_OWNER);
             if (ownerName != null && ownerName.length() > 0) {
-                Player player = server.getPlayer(ownerName);
-                this.setOwner(player);
+                this.setOwner(Server.getInstance().getPlayer(ownerName));
                 this.setSitting(namedTag.getBoolean(NAMED_TAG_SITTING));
             }
         }
@@ -83,7 +80,7 @@ public abstract class TameableMonster extends WalkingMonster implements Tameable
     }
 
 
-    private void setTamed (boolean tamed) {
+    private void setTamed(boolean tamed) {
         this.setDataFlag(DATA_FLAGS, DATA_FLAG_TAMED, tamed);
     }
 
@@ -95,5 +92,14 @@ public abstract class TameableMonster extends WalkingMonster implements Tameable
     @Override
     public void setOwnerUUID(String ownerUUID) {
         this.ownerUUID = ownerUUID;
+    }
+
+    @Override
+    public Vector3 updateMove(int tickDiff) {
+        if (this.isSitting()) {
+            return this.target;
+        }
+
+        return super.updateMove(tickDiff);
     }
 }

@@ -18,14 +18,9 @@ import cn.nukkit.event.inventory.InventoryPickupArrowEvent;
 import cn.nukkit.event.player.PlayerInteractEvent;
 import cn.nukkit.item.Item;
 import cn.nukkit.level.Level;
-import cn.nukkit.level.Location;
 import cn.nukkit.level.Position;
-import cn.nukkit.level.format.FullChunk;
 import cn.nukkit.math.BlockFace;
 import cn.nukkit.nbt.tag.CompoundTag;
-import cn.nukkit.nbt.tag.DoubleTag;
-import cn.nukkit.nbt.tag.FloatTag;
-import cn.nukkit.nbt.tag.ListTag;
 import cn.nukkit.network.protocol.EntityEventPacket;
 import cn.nukkit.plugin.PluginBase;
 import cn.nukkit.utils.Config;
@@ -55,11 +50,9 @@ import static nukkitcoders.mobplugin.entities.block.BlockEntitySpawner.*;
  */
 public class MobPlugin extends PluginBase implements Listener {
 
-    private int configVersion = 6;
+    public Config pluginConfig;
 
-    private Config pluginConfig = null;
-
-    public static MobPlugin instance;
+    private static MobPlugin instance;
 
     public static MobPlugin getInstance() {
         return instance;
@@ -75,11 +68,13 @@ public class MobPlugin extends PluginBase implements Listener {
         this.saveDefaultConfig();
         pluginConfig = getConfig();
 
-        if (getConfig().getInt("config-version") != configVersion) {
+        if (getConfig().getInt("config-version") != 8) {
             this.getServer().getLogger().warning("MobPlugin's config file is outdated. Please delete old config.");
+            this.getServer().getPluginManager().disablePlugin(this);
+            return;
         }
 
-        int spawnDelay = pluginConfig.getInt("entities.auto-spawn-tick", 0);
+        int spawnDelay = pluginConfig.getInt("entities.autospawn-ticks", 0);
 
         if (spawnDelay > 0) {
             this.getServer().getScheduler().scheduleDelayedRepeatingTask(this, new AutoSpawnTask(this), spawnDelay, spawnDelay);
@@ -100,7 +95,7 @@ public class MobPlugin extends PluginBase implements Listener {
 
         if (args.length == 0) {
             sender.sendMessage("-- MobPlugin " + this.getDescription().getVersion() + " --");
-            sender.sendMessage("/mob spawn <mob> <opt:player> - Spawn a mob");
+            sender.sendMessage("/mob spawn <entity> <opt:player> - Summon entity");
             sender.sendMessage("/mob removeall - Remove all living mobs");
             sender.sendMessage("/mob removeitems - Remove all items from ground");
             return true;
@@ -109,7 +104,7 @@ public class MobPlugin extends PluginBase implements Listener {
         switch (args[0]) {
             case "spawn":
                 if (args.length == 1) {
-                    sender.sendMessage("Usage: /mob spawn <mob> <opt:player>");
+                    sender.sendMessage("Usage: /mob spawn <entity> <opt:player>");
                     break;
                 }
 
@@ -126,7 +121,7 @@ public class MobPlugin extends PluginBase implements Listener {
                     Position pos = playerThatSpawns.getPosition();
 
                     Entity ent;
-                    if ((ent = MobPlugin.create(mob, pos)) != null) {
+                    if ((ent = Entity.createEntity(mob, pos)) != null) {
                         ent.spawnToAll();
                         sender.sendMessage("Spawned " + mob + " to " + playerThatSpawns.getName());
                     } else {
@@ -198,6 +193,7 @@ public class MobPlugin extends PluginBase implements Listener {
         Entity.registerEntity(Turtle.class.getSimpleName(), Turtle.class);
         Entity.registerEntity(Villager.class.getSimpleName(), Villager.class);
         Entity.registerEntity(ZombieHorse.class.getSimpleName(), ZombieHorse.class);
+        Entity.registerEntity(WanderingTrader.class.getSimpleName(), WanderingTrader.class);
 
         Entity.registerEntity(Blaze.class.getSimpleName(), Blaze.class);
         Entity.registerEntity(Ghast.class.getSimpleName(), Ghast.class);
@@ -229,27 +225,12 @@ public class MobPlugin extends PluginBase implements Listener {
         Entity.registerEntity(Wolf.class.getSimpleName(), Wolf.class);
         Entity.registerEntity(Zombie.class.getSimpleName(), Zombie.class);
         Entity.registerEntity(ZombieVillager.class.getSimpleName(), ZombieVillager.class);
+        Entity.registerEntity(Pillager.class.getSimpleName(), Pillager.class);
+        Entity.registerEntity(Ravager.class.getSimpleName(), Ravager.class);
 
         Entity.registerEntity("BlueWitherSkull", EntityBlueWitherSkull.class);
         Entity.registerEntity("FireBall", EntityFireBall.class);
         Entity.registerEntity("ShulkerBullet", EntityShulkerBullet.class);
-    }
-
-    public static Entity create(Object type, Position source, Object... args) {
-        FullChunk chunk = source.getLevel().getChunk((int) source.x >> 4, (int) source.z >> 4, true);
-        if (!chunk.isGenerated()) {
-            chunk.setGenerated();
-        }
-        if (!chunk.isPopulated()) {
-            chunk.setPopulated();
-        }
-
-        CompoundTag nbt = new CompoundTag().putList(new ListTag<DoubleTag>("Pos").add(new DoubleTag("", source.x)).add(new DoubleTag("", source.y)).add(new DoubleTag("", source.z)))
-                .putList(new ListTag<DoubleTag>("Motion").add(new DoubleTag("", 0)).add(new DoubleTag("", 0)).add(new DoubleTag("", 0)))
-                .putList(new ListTag<FloatTag>("Rotation").add(new FloatTag("", source instanceof Location ? (float) ((Location) source).yaw : 0))
-                        .add(new FloatTag("", source instanceof Location ? (float) ((Location) source).pitch : 0)));
-
-        return Entity.createEntity(type.toString(), chunk, nbt, args);
     }
 
     @EventHandler
@@ -259,15 +240,9 @@ public class MobPlugin extends PluginBase implements Listener {
         if (!(baseEntity.getLastDamageCause() instanceof EntityDamageByEntityEvent)) return;
         Entity damager = ((EntityDamageByEntityEvent) baseEntity.getLastDamageCause()).getDamager();
         if (!(damager instanceof Player)) return;
-        Player player = (Player) damager;
         int killExperience = baseEntity.getKillExperience();
-        if (killExperience > 0 && player.isSurvival()) {
-            player.addExperience(killExperience);
-            /*if (player.isSurvival()) {
-                for (int i = 1; i <= killExperience; i++) {
-                    player.getLevel().dropExpOrb(baseEntity, 1);
-                }
-            }*/
+        if (killExperience > 0) {
+            damager.getLevel().dropExpOrb(baseEntity, killExperience);
         }
     }
 
@@ -277,16 +252,21 @@ public class MobPlugin extends PluginBase implements Listener {
 
         Item item = ev.getItem();
         Block block = ev.getBlock();
+        Player player = ev.getPlayer();
 
         if (item.getId() != Item.SPAWN_EGG || block.getId() != Block.MONSTER_SPAWNER) return;
 
         BlockEntity blockEntity = block.getLevel().getBlockEntity(block);
-        if (blockEntity != null && blockEntity instanceof BlockEntitySpawner) {
+        if (blockEntity instanceof BlockEntitySpawner) {
             SpawnerChangeTypeEvent event = new SpawnerChangeTypeEvent((BlockEntitySpawner) blockEntity, ev.getBlock(), ev.getPlayer(), ((BlockEntitySpawner) blockEntity).getSpawnEntityType(), item.getDamage());
             this.getServer().getPluginManager().callEvent(event);
             if (event.isCancelled()) return;
             ((BlockEntitySpawner) blockEntity).setSpawnEntityType(item.getDamage());
             ev.setCancelled(true);
+
+            if (!player.isCreative()) {
+                player.getInventory().decreaseCount(player.getInventory().getHeldItemIndex());
+            }
         } else {
             SpawnerCreateEvent event = new SpawnerCreateEvent(ev.getPlayer(), ev.getBlock(), item.getDamage());
             this.getServer().getPluginManager().callEvent(event);
@@ -302,6 +282,10 @@ public class MobPlugin extends PluginBase implements Listener {
                     .putInt(TAG_Y, (int) block.y)
                     .putInt(TAG_Z, (int) block.z);
             new BlockEntitySpawner(block.getLevel().getChunk((int) block.x >> 4, (int) block.z >> 4), nbt);
+
+            if (!player.isCreative()) {
+                player.getInventory().decreaseCount(player.getInventory().getHeldItemIndex());
+            }
         }
     }
 
@@ -312,13 +296,13 @@ public class MobPlugin extends PluginBase implements Listener {
         if (block.getId() == Block.JACK_O_LANTERN || block.getId() == Block.PUMPKIN) {
             if (block.getSide(BlockFace.DOWN).getId() == Item.SNOW_BLOCK && block.getSide(BlockFace.DOWN, 2).getId() == Item.SNOW_BLOCK) {
 
-                SpawnGolemEvent event = new SpawnGolemEvent(player, block.add(0.5, -2, 0.5), SpawnGolemEvent.GolemType.SNOW_GOLEM);
+                SpawnGolemEvent event = new SpawnGolemEvent(player, block.add(0.5, -1, 0.5), SpawnGolemEvent.GolemType.SNOW_GOLEM);
 
                 this.getServer().getPluginManager().callEvent(event);
 
                 if (event.isCancelled()) return;
 
-                Entity entity = create(SnowGolem.NETWORK_ID, block.add(0.5, -2, 0.5));
+                Entity entity = Entity.createEntity("SnowGolem", block.add(0.5, -1, 0.5));
 
                 if (entity != null) entity.spawnToAll();
 
@@ -348,7 +332,7 @@ public class MobPlugin extends PluginBase implements Listener {
 
                 if (event.isCancelled()) return;
 
-                Entity entity = MobPlugin.create(IronGolem.NETWORK_ID, block.add(0.5, -1, 0.5));
+                Entity entity = Entity.createEntity("IronGolem", block.add(0.5, -1, 0.5));
 
                 if (entity != null) entity.spawnToAll();
 
@@ -368,7 +352,7 @@ public class MobPlugin extends PluginBase implements Listener {
         Block block = ev.getBlock();
         if ((block.getId() == Block.MONSTER_EGG) && block.level.getBlockLightAt((int) block.x, (int) block.y, (int) block.z) < 12 && Utils.rand(1, 5) == 1) {
 
-            Silverfish entity = (Silverfish) create(Silverfish.NETWORK_ID, block.add(0.5, 0, 0.5));
+            Silverfish entity = (Silverfish) Entity.createEntity("Silverfish", block.add(0.5, 0, 0.5));
             if (entity == null) return;
 
             entity.spawnToAll();
@@ -384,5 +368,20 @@ public class MobPlugin extends PluginBase implements Listener {
         if (ev.getArrow().namedTag.getBoolean("canNotPickup")) {
             ev.setCancelled();
         }
+    }
+
+    public boolean isAnimalSpawningAllowedByTime(Level level) {
+        int time = level.getTime() % Level.TIME_FULL;
+        return time < 13184 || time > 22800;
+    }
+
+    public boolean isMobSpawningAllowedByTime(Level level) {
+        int time = level.getTime() % Level.TIME_FULL;
+        return time > 13184 && time < 22800;
+    }
+
+    public boolean shouldMobBurn(Level level, Entity entity) {
+        int time = level.getTime() % Level.TIME_FULL;
+        return !entity.isOnFire() && !level.isRaining() && (time < 12567 || time > 23450) && !entity.isInsideOfWater() && level.canBlockSeeSky(entity);
     }
 }
