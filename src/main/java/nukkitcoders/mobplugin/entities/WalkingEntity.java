@@ -11,6 +11,7 @@ import cn.nukkit.math.Vector3;
 import cn.nukkit.nbt.tag.CompoundTag;
 import nukkitcoders.mobplugin.RouteFinderThreadPool;
 import nukkitcoders.mobplugin.entities.animal.Animal;
+import nukkitcoders.mobplugin.entities.animal.walking.Llama;
 import nukkitcoders.mobplugin.route.RouteFinder;
 import nukkitcoders.mobplugin.runnable.RouteFinderSearchTask;
 import nukkitcoders.mobplugin.utils.Utils;
@@ -34,6 +35,10 @@ public abstract class WalkingEntity extends BaseEntity {
 
         this.followTarget = null;
 
+        if (!this.passengers.isEmpty() && !(this instanceof Llama)) {
+            return;
+        }
+
         double near = Integer.MAX_VALUE;
 
         for (Entity entity : this.getLevel().getEntities()) {
@@ -55,7 +60,7 @@ public abstract class WalkingEntity extends BaseEntity {
             this.stayTime = 0;
             this.moveTime = 0;
             this.followTarget = creature;
-            if (this.route==null)this.target = creature;
+            if (this.route == null && this.passengers.isEmpty()) this.target = creature;
 
         }
 
@@ -128,7 +133,7 @@ public abstract class WalkingEntity extends BaseEntity {
                 return null;
             }
 
-            if (this.age % 10 == 0 && this.route!=null && !this.route.isSearching()) {
+            if (this.age % 10 == 0 && this.route != null && !this.route.isSearching()) {
                 RouteFinderThreadPool.executeRouteFinderThread(new RouteFinderSearchTask(this.route));
                 if (this.route.hasNext()) {
                     this.target = this.route.next();
@@ -153,15 +158,15 @@ public abstract class WalkingEntity extends BaseEntity {
                     this.motionZ = 0;
                 } else {
                     if (this.isInsideOfWater()) {
-                        this.motionX = this.getSpeed() * 0.05 * (x / diff);
-                        this.motionZ = this.getSpeed() * 0.05 * (z / diff);
+                        this.motionX = this.getSpeed() * moveMultifier * 0.05 * (x / diff);
+                        this.motionZ = this.getSpeed() * moveMultifier * 0.05 * (z / diff);
                         this.level.addParticle(new BubbleParticle(this.add(Utils.rand(-2.0,2.0),Utils.rand(-0.5,0),Utils.rand(-2.0,2.0))));
                     } else {
-                        this.motionX = this.getSpeed() * 0.1 * (x / diff);
-                        this.motionZ = this.getSpeed() * 0.1 * (z / diff);
+                        this.motionX = this.getSpeed() * moveMultifier * 0.1 * (x / diff);
+                        this.motionZ = this.getSpeed() * moveMultifier * 0.1 * (z / diff);
                     }
                 }
-                if (this.stayTime <= 0 || Utils.rand()) this.yaw = Math.toDegrees(-Math.atan2(x / diff, z / diff));
+                if ((this.passengers.isEmpty() || this instanceof Llama) && (this.stayTime <= 0 || Utils.rand())) this.yaw = Math.toDegrees(-Math.atan2(x / diff, z / diff));
             }
 
             Vector3 before = this.target;
@@ -176,15 +181,15 @@ public abstract class WalkingEntity extends BaseEntity {
                     this.motionZ = 0;
                 } else {
                     if (this.isInsideOfWater()) {
-                        this.motionX = this.getSpeed() * 0.05 * (x / diff);
-                        this.motionZ = this.getSpeed() * 0.05 * (z / diff);
+                        this.motionX = this.getSpeed() * moveMultifier * 0.05 * (x / diff);
+                        this.motionZ = this.getSpeed() * moveMultifier * 0.05 * (z / diff);
                         this.level.addParticle(new BubbleParticle(this.add(Utils.rand(-2.0,2.0),Utils.rand(-0.5,0),Utils.rand(-2.0,2.0))));
                     } else {
-                        this.motionX = this.getSpeed() * 0.15 * (x / diff);
-                        this.motionZ = this.getSpeed() * 0.15 * (z / diff);
+                        this.motionX = this.getSpeed() * moveMultifier * 0.15 * (x / diff);
+                        this.motionZ = this.getSpeed() * moveMultifier * 0.15 * (z / diff);
                     }
                 }
-                if (this.stayTime <= 0 || Utils.rand()) this.yaw = Math.toDegrees(-Math.atan2(x / diff, z / diff));
+                if ((this.passengers.isEmpty() || this instanceof Llama) && (this.stayTime <= 0 || Utils.rand())) this.yaw = Math.toDegrees(-Math.atan2(x / diff, z / diff));
             }
 
             double dx = this.motionX * tickDiff;
@@ -222,7 +227,7 @@ public abstract class WalkingEntity extends BaseEntity {
                     }
                 }
             }
-            return this.followTarget !=null ? this.followTarget : this.target ;
+            return this.followTarget != null ? this.followTarget : this.target;
         }
         return null;
     }

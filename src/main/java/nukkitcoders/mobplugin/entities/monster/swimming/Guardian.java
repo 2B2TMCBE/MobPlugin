@@ -13,9 +13,7 @@ import nukkitcoders.mobplugin.entities.animal.swimming.Squid;
 import nukkitcoders.mobplugin.entities.monster.SwimmingMonster;
 import nukkitcoders.mobplugin.utils.Utils;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 public class Guardian extends SwimmingMonster {
 
@@ -53,9 +51,9 @@ public class Guardian extends SwimmingMonster {
     public boolean targetOption(EntityCreature creature, double distance) {
         if (creature instanceof Player) {
             Player player = (Player) creature;
-            return (!player.closed) && player.spawned && player.isAlive() && player.isSurvival() && distance <= 81;
+            return (!player.closed) && player.spawned && player.isAlive() && (player.isSurvival() || player.isAdventure()) && distance <= 80;
         } else if (creature instanceof Squid) {
-            return creature.isAlive() && this.distanceSquared(creature) <= 81;
+            return creature.isAlive() && this.distanceSquared(creature) <= 80;
         }
         return false;
     }
@@ -103,6 +101,11 @@ public class Guardian extends SwimmingMonster {
 
     @Override
     public boolean entityBaseTick(int tickDiff) {
+        if (getServer().getDifficulty() == 0) {
+            this.close();
+            return true;
+        }
+
         boolean hasUpdate = super.entityBaseTick(tickDiff);
         if (followTarget != null) {
             if (laserTargetEid !=followTarget.getId()) {
@@ -125,23 +128,11 @@ public class Guardian extends SwimmingMonster {
 
     @Override
     public Item[] getDrops() {
-        List<Item> drops = new ArrayList<>();
-
-        if (this.hasCustomName()) {
-            drops.add(Item.get(Item.NAME_TAG, 0, 1));
-        }
-
-        if (this.lastDamageCause instanceof EntityDamageByEntityEvent && !this.isBaby()) {
-            for (int i = 0; i < Utils.rand(0, 2); i++) {
-                drops.add(Item.get(Item.PRISMARINE_SHARD, 0, 1));
-            }
-        }
-
-        return drops.toArray(new Item[0]);
+        return new Item[]{Item.get(Item.PRISMARINE_SHARD, 0, Utils.rand(0, 2))};
     }
 
     @Override
     public int getKillExperience() {
-        return this.isBaby() ? 0 : 10;
+        return 10;
     }
 }

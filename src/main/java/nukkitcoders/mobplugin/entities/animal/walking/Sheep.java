@@ -1,22 +1,23 @@
 package nukkitcoders.mobplugin.entities.animal.walking;
 
 import cn.nukkit.Player;
+import cn.nukkit.Server;
 import cn.nukkit.entity.EntityCreature;
 import cn.nukkit.entity.data.ByteEntityData;
-import cn.nukkit.event.entity.EntityDamageByEntityEvent;
 import cn.nukkit.item.Item;
 import cn.nukkit.item.ItemDye;
 import cn.nukkit.level.Sound;
 import cn.nukkit.level.format.FullChunk;
 import cn.nukkit.level.particle.ItemBreakParticle;
+import cn.nukkit.math.Vector3;
 import cn.nukkit.nbt.tag.CompoundTag;
+import cn.nukkit.network.protocol.EntityEventPacket;
 import cn.nukkit.utils.DyeColor;
 import nukkitcoders.mobplugin.entities.animal.WalkingAnimal;
 import nukkitcoders.mobplugin.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class Sheep extends WalkingAnimal {
 
@@ -24,6 +25,7 @@ public class Sheep extends WalkingAnimal {
 
     public boolean sheared = false;
     public int color = 0;
+    public int unshearTicks = -1;
 
     public Sheep(FullChunk chunk, CompoundTag nbt) {
         super(chunk, nbt);
@@ -62,12 +64,12 @@ public class Sheep extends WalkingAnimal {
         }
 
         if (!this.namedTag.contains("Sheared")) {
-            this.namedTag.putByte("Sheared", 0);
-        } else {
-            this.sheared = this.namedTag.getBoolean("Sheared");
+            this.namedTag.putBoolean("Sheared", false);
+        } else if (this.namedTag.getBoolean("Sheared")) {
+            this.sheared = true;
+            this.unshearTicks = Utils.rand(2400, 4800);
+            this.setDataFlag(DATA_FLAGS, DATA_FLAG_SHEARED, true);
         }
-
-        this.setDataFlag(DATA_FLAGS, DATA_FLAG_SHEARED, this.sheared);
     }
 
     public void saveNBT() {
@@ -77,8 +79,7 @@ public class Sheep extends WalkingAnimal {
     }
 
     @Override
-    public boolean onInteract(Player player, Item item) {
-        super.onInteract(player, item);
+    public boolean onInteract(Player player, Item item, Vector3 clickedPos) {
         if (item.getId() == Item.DYE) {
             this.setColor(((ItemDye) item).getDyeColor().getWoolData());
             return true;
@@ -88,20 +89,24 @@ public class Sheep extends WalkingAnimal {
             this.level.addParticle(new ItemBreakParticle(this.add(0, this.getMountedYOffset(), 0), Item.get(Item.WHEAT)));
             this.setInLove();
             return true;
-        } else if (item.equals(Item.get(Item.SHEARS, 0, 1), false) && !isBaby() && !this.sheared) {
-            this.shear();
+        } else if (item.equals(Item.get(Item.SHEARS, 0, 1), false) && !this.isBaby() && !this.sheared) {
+            this.shear(true);
             this.level.addSound(this, Sound.MOB_SHEEP_SHEAR);
             player.getInventory().getItemInHand().setDamage(item.getDamage() + 1);
             return true;
         }
-        return false;
-
+        return super.onInteract(player, item, clickedPos);
     }
 
-    public void shear() {
-        this.sheared = true;
-        this.setDataFlag(DATA_FLAGS, DATA_FLAG_SHEARED, true);
-        this.level.dropItem(this, Item.get(Item.WOOL, getColor(), Utils.rand(0,4)));
+    public void shear(boolean shear) {
+        this.sheared = shear;
+        this.setDataFlag(DATA_FLAGS, DATA_FLAG_SHEARED, shear);
+        if (shear) {
+            this.level.dropItem(this, Item.get(Item.WOOL, getColor(), Utils.rand(1, 3)));
+            this.unshearTicks = Utils.rand(2400, 4800);
+        } else {
+            this.unshearTicks = -1;
+        }
     }
 
     @Override
@@ -117,11 +122,7 @@ public class Sheep extends WalkingAnimal {
     public Item[] getDrops() {
         List<Item> drops = new ArrayList<>();
 
-        if (this.hasCustomName()) {
-            drops.add(Item.get(Item.NAME_TAG, 0, 1));
-        }
-
-        if (this.lastDamageCause instanceof EntityDamageByEntityEvent && !this.isBaby()) {
+        if (!this.isBaby()) {
             drops.add(Item.get(Item.WOOL, this.getColor(), 1));
 
             for (int i = 0; i < Utils.rand(1, 2); i++) {
@@ -144,8 +145,7 @@ public class Sheep extends WalkingAnimal {
     }
 
     private int randomColor() {
-        ThreadLocalRandom random = ThreadLocalRandom.current();
-        int rand = random.nextInt(0, 2500);
+        int rand = Utils.random.nextInt(0, 2500);
 
         if (rand < 125 && 0 <= rand)return DyeColor.BLACK.getDyeData();
         else if (rand < 250 && 125 <= rand)return DyeColor.GRAY.getDyeData();
@@ -158,5 +158,27 @@ public class Sheep extends WalkingAnimal {
     @Override
     public int getKillExperience() {
         return this.isBaby() ? 0 : Utils.rand(1, 3);
+    }
+
+    @Override
+    public boolean entityBaseTick(int tickDiff) {
+        if (this.sheared && this.unshearTicks > 0) {
+            if (this.unshearTicks == 40) {
+                if (this.stayTime <= 0) {
+                    this.stayTime = 50;
+                }
+
+                EntityEventPacket pk = new EntityEventPacket();
+                pk.eid = this.getId();
+                pk.event = EntityEventPacket.EAT_GRASS_ANIMATION;
+                Server.broadcastPacket(this.getViewers().values(), pk);
+            }
+
+            this.unshearTicks--;
+        } else if (this.sheared && this.unshearTicks == 0) {
+            shear(false);
+        }
+
+        return super.entityBaseTick(tickDiff);
     }
 }

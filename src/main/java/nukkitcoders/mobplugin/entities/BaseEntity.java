@@ -13,32 +13,21 @@ import cn.nukkit.math.Vector3;
 import cn.nukkit.nbt.tag.CompoundTag;
 import nukkitcoders.mobplugin.MobPlugin;
 import nukkitcoders.mobplugin.entities.monster.Monster;
+import nukkitcoders.mobplugin.entities.monster.flying.EnderDragon;
 import nukkitcoders.mobplugin.utils.Utils;
 
 public abstract class BaseEntity extends EntityCreature implements EntityAgeable {
 
     protected int stayTime = 0;
-
     protected int moveTime = 0;
-
-    public double moveMultifier = 1.0d;
-
+    protected float moveMultifier = 1.0f;
     protected Vector3 target = null;
-
     protected Entity followTarget = null;
-
-    protected boolean baby = false;
-
+    private boolean baby = false;
     private boolean movement = true;
-
     private boolean friendly = false;
-    
-    private int despawnTicks = MobPlugin.getInstance().pluginConfig.getInt("entities.despawn-ticks", 6000);
-
-    private int maxJumpHeight = 1;
-
+    private static final int despawnTicks = MobPlugin.getInstance().pluginConfig.getInt("entities.despawn-ticks", 6000);
     protected int attackDelay = 0;
-
     public Item[] armor;
 
     public BaseEntity(FullChunk chunk, CompoundTag nbt) {
@@ -78,10 +67,6 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
         return 1;
     }
 
-    public int getMaxJumpHeight() {
-        return this.maxJumpHeight;
-    }
-
     public Vector3 getTarget() {
         return this.target;
     }
@@ -96,7 +81,6 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
 
     public void setFollowTarget(Entity target) {
         this.followTarget = target;
-
         this.moveTime = 0;
         this.stayTime = 0;
         this.target = null;
@@ -147,7 +131,7 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
         if (this instanceof Monster) {
             if (creature instanceof Player) {
                 Player player = (Player) creature;
-                return (!player.closed) && player.spawned && player.isAlive() && player.isSurvival() && distance <= 80;
+                return (!player.closed) && player.spawned && player.isAlive() && (player.isSurvival() || player.isAdventure()) && distance <= 80;
             }
             return creature.isAlive() && (!creature.closed) && distance <= 81;
         }
@@ -158,7 +142,7 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
     public boolean entityBaseTick(int tickDiff) {
         super.entityBaseTick(tickDiff);
 
-        if (this.age > this.despawnTicks && !this.hasCustomName() && !(this instanceof Boss)) {
+        if (this.canDespawn()) {
             this.close();
         }
 
@@ -188,21 +172,6 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
         this.target = null;
         this.stayTime = 0;
         return true;
-    }
-
-    public int getMaxFallHeight() {
-        if (!(this.target instanceof Entity)) {
-            return 3;
-        } else {
-            int i = (int) (this.getHealth() - this.getMaxHealth() * 0.33F);
-            i = i - (3 - this.getServer().getDifficulty()) * 4;
-
-            if (i < 0) {
-                i = 0;
-            }
-
-            return i + 3;
-        }
     }
 
     @Override
@@ -239,7 +208,7 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
     @Override
     public boolean onInteract(Player player, Item item) {
         if (item.getId() == Item.NAME_TAG) {
-            if (item.hasCustomName()) {
+            if (item.hasCustomName() && !(this instanceof EnderDragon)) {
                 this.setNameTag(item.getCustomName());
                 this.setNameTagVisible(true);
                 player.getInventory().decreaseCount(player.getInventory().getHeldItemIndex());
@@ -249,24 +218,16 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
         return false;
     }
 
-    @Override
-    public Item[] getDrops() {
-        if (this.hasCustomName()) {
-            return new Item[]{Item.get(Item.NAME_TAG, 0, 1)};
-        }
-        return new Item[0];
-    }
-
     protected float getMountedYOffset() {
         return getHeight() * 0.75F;
     }
 
-    public Item[] getRandomArmor() {
+    protected Item[] getRandomArmor() {
         Item[] slots = new Item[4];
-        Item helmet = new Item(0, 0, 0);
-        Item chestplate = new Item(0, 0, 0);
-        Item leggings = new Item(0, 0, 0);
-        Item boots = new Item(0, 0, 0);
+        Item helmet = Item.get(0);
+        Item chestplate = Item.get(0);
+        Item leggings = Item.get(0);
+        Item boots = Item.get(0);
 
         switch (Utils.rand(1, 5)) {
             case 1:
@@ -460,5 +421,9 @@ public abstract class BaseEntity extends EntityCreature implements EntityAgeable
     private void addHealth(int health) {
         this.setMaxHealth(this.getMaxHealth() + health);
         this.setHealth(this.getHealth() + health);
+    }
+
+    public boolean canDespawn() {
+        return despawnTicks > 0 && this.age > despawnTicks && !this.hasCustomName() && !(this instanceof Boss);
     }
 }

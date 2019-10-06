@@ -1,5 +1,7 @@
 package nukkitcoders.mobplugin.entities.monster.swimming;
 
+import cn.nukkit.Player;
+import cn.nukkit.block.BlockSponge;
 import cn.nukkit.entity.Entity;
 import cn.nukkit.entity.EntityCreature;
 import cn.nukkit.event.entity.EntityDamageByEntityEvent;
@@ -56,13 +58,13 @@ public class ElderGuardian extends SwimmingMonster {
     public Item[] getDrops() {
         List<Item> drops = new ArrayList<>();
 
-        if (this.hasCustomName()) {
-            drops.add(Item.get(Item.NAME_TAG, 0, 1));
+        for (int i = 0; i < Utils.rand(0, 2); i++) {
+            drops.add(Item.get(Item.PRISMARINE_SHARD, 0, 1));
         }
 
-        if (this.lastDamageCause instanceof EntityDamageByEntityEvent && !this.isBaby()) {
-            for (int i = 0; i < Utils.rand(0, 2); i++) {
-                drops.add(Item.get(Item.PRISMARINE_SHARD, 0, 1));
+        if (this.lastDamageCause instanceof EntityDamageByEntityEvent) {
+            if (((EntityDamageByEntityEvent) this.lastDamageCause).getDamager() instanceof Player) {
+                drops.add(Item.get(Item.SPONGE, BlockSponge.WET, 1));
             }
         }
 
@@ -71,11 +73,21 @@ public class ElderGuardian extends SwimmingMonster {
 
     @Override
     public int getKillExperience() {
-        return this.isBaby() ? 0 : 10;
+        return 10;
     }
 
     @Override
     public String getName() {
         return "Elder Guardian";
+    }
+
+    @Override
+    public boolean entityBaseTick(int tickDiff) {
+        if (getServer().getDifficulty() == 0) {
+            this.close();
+            return true;
+        }
+
+        return super.entityBaseTick(tickDiff);
     }
 }

@@ -5,10 +5,14 @@ import cn.nukkit.block.BlockID;
 import cn.nukkit.blockentity.BlockEntity;
 import cn.nukkit.blockentity.BlockEntitySpawnable;
 import cn.nukkit.entity.Entity;
+import cn.nukkit.event.entity.CreatureSpawnEvent;
 import cn.nukkit.level.Position;
 import cn.nukkit.level.format.FullChunk;
 import cn.nukkit.nbt.tag.CompoundTag;
 import cn.nukkit.nbt.tag.ShortTag;
+import nukkitcoders.mobplugin.MobPlugin;
+import nukkitcoders.mobplugin.entities.BaseEntity;
+import nukkitcoders.mobplugin.entities.monster.Monster;
 import nukkitcoders.mobplugin.utils.Utils;
 
 import java.util.ArrayList;
@@ -36,7 +40,7 @@ public class BlockEntitySpawner extends BlockEntitySpawnable {
     public static final String TAG_MAX_NEARBY_ENTITIES = "MaxNearbyEntities";
     public static final String TAG_REQUIRED_PLAYER_RANGE = "RequiredPlayerRange";
 
-    public static final short SPAWN_RANGE = 8;
+    public static final short SPAWN_RANGE = (short) MobPlugin.getInstance().getConfig().getInt("other.spawner-spawn-range");
     public static final short MIN_SPAWN_DELAY = 200;
     public static final short MAX_SPAWN_DELAY = 5000;
     public static final short MAX_NEARBY_ENTITIES = 20;
@@ -91,11 +95,13 @@ public class BlockEntitySpawner extends BlockEntitySpawnable {
             ArrayList<Entity> list = new ArrayList<>();
             boolean isValid = false;
             for (Entity entity : this.level.getEntities()) {
-                if (entity.distance(this) <= this.requiredPlayerRange) {
-                    if (entity instanceof Player) {
-                        isValid = true;
+                if (entity instanceof Player || entity instanceof BaseEntity) {
+                    if (entity.distance(this) <= this.requiredPlayerRange) {
+                        if (entity instanceof Player) {
+                            isValid = true;
+                        }
+                        list.add(entity);
                     }
-                    list.add(entity);
                 }
             }
 
@@ -107,9 +113,22 @@ public class BlockEntitySpawner extends BlockEntitySpawnable {
                                 this.z + Utils.rand(-this.spawnRange, this.spawnRange),
                                 this.level
                         );
+
+                CreatureSpawnEvent ev = new CreatureSpawnEvent(this.entityId, pos, new CompoundTag(), CreatureSpawnEvent.SpawnReason.SPAWNER);
+                level.getServer().getPluginManager().callEvent(ev);
+
+                if (ev.isCancelled()) {
+                    return true;
+                }
+
                 Entity entity = Entity.createEntity(this.entityId, pos);
-                if (entity == null) return true;
-                entity.spawnToAll();
+                if (entity != null) {
+                    if (entity instanceof Monster && this.level.getBlockLightAt((int) x, (int) y, (int) z) > 3) {
+                        entity.close();
+                        return true;
+                    }
+                    entity.spawnToAll();
+                }
             }
         }
         return true;

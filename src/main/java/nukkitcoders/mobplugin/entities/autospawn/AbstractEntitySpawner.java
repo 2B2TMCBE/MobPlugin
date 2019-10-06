@@ -2,15 +2,14 @@ package nukkitcoders.mobplugin.entities.autospawn;
 
 import cn.nukkit.Player;
 import cn.nukkit.Server;
+import cn.nukkit.level.GameRule;
 import cn.nukkit.level.Level;
 import cn.nukkit.level.Position;
-import cn.nukkit.utils.Config;
 import nukkitcoders.mobplugin.AutoSpawnTask;
 import nukkitcoders.mobplugin.MobPlugin;
 import nukkitcoders.mobplugin.utils.Utils;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.StringTokenizer;
 
@@ -38,10 +37,10 @@ public abstract class AbstractEntitySpawner implements IEntitySpawner {
     }
 
     @Override
-    public void spawn(Collection<Player> onlinePlayers) {
+    public void spawn() {
         if (isSpawnAllowedByDifficulty()) {
             SpawnResult lastSpawnResult;
-            for (Player player : onlinePlayers) {
+            for (Player player : server.getOnlinePlayers().values()) {
                 if (isWorldSpawnAllowed (player.getLevel())) {
                     lastSpawnResult = spawn(player);
                     if (lastSpawnResult.equals(SpawnResult.MAX_SPAWN_REACHED)) {
@@ -59,7 +58,7 @@ public abstract class AbstractEntitySpawner implements IEntitySpawner {
             }
         }
 
-        return true;
+        return level.getGameRules().getBoolean(GameRule.DO_MOB_SPAWNING);
     }
 
     protected SpawnResult spawn(Player player) {

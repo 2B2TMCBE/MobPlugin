@@ -4,6 +4,9 @@ import cn.nukkit.Player;
 import cn.nukkit.block.Block;
 import cn.nukkit.entity.Entity;
 import cn.nukkit.entity.EntityAgeable;
+import cn.nukkit.entity.EntitySmite;
+import cn.nukkit.entity.mob.EntityDrowned;
+import cn.nukkit.event.entity.CreatureSpawnEvent;
 import cn.nukkit.event.entity.EntityDamageByEntityEvent;
 import cn.nukkit.event.entity.EntityDamageEvent;
 import cn.nukkit.item.Item;
@@ -11,6 +14,7 @@ import cn.nukkit.item.ItemBlock;
 import cn.nukkit.item.ItemShovelIron;
 import cn.nukkit.item.ItemSwordIron;
 import cn.nukkit.level.format.FullChunk;
+import cn.nukkit.nbt.NBTIO;
 import cn.nukkit.nbt.tag.CompoundTag;
 import cn.nukkit.network.protocol.EntityEventPacket;
 import cn.nukkit.network.protocol.MobArmorEquipmentPacket;
@@ -24,7 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class Zombie extends WalkingMonster implements EntityAgeable {
+public class Zombie extends WalkingMonster implements EntityAgeable, EntitySmite {
 
     public static final int NETWORK_ID = 32;
 
@@ -63,43 +67,28 @@ public class Zombie extends WalkingMonster implements EntityAgeable {
         this.setMaxHealth(20);
 
         this.armor = getRandomArmor();
-        this.setRandomTool();
+
+        if (this.namedTag.contains("Item")) {
+            this.tool = NBTIO.getItemHelper(this.namedTag.getCompound("Item"));
+            if (tool instanceof ItemSwordIron) {
+                this.setDamage(new float[]{0, 4, 6, 8});
+            } else if (tool instanceof ItemShovelIron) {
+                this.setDamage(new float[]{0, 3, 4, 5});
+            }
+        } else {
+            this.setRandomTool();
+        }
     }
 
     @Override
     public void attackEntity(Entity player) {
-        if (this.attackDelay > 10 && player.distanceSquared(this) <= 1) {
+        if (this.attackDelay > 23 && player.distanceSquared(this) <= 1) {
             this.attackDelay = 0;
             HashMap<EntityDamageEvent.DamageModifier, Float> damage = new HashMap<>();
             damage.put(EntityDamageEvent.DamageModifier.BASE, this.getDamage());
 
             if (player instanceof Player) {
-                @SuppressWarnings("serial")
-                HashMap<Integer, Float> armorValues = new HashMap<Integer, Float>() {
-
-                    {
-                        put(Item.LEATHER_CAP, 1f);
-                        put(Item.LEATHER_TUNIC, 3f);
-                        put(Item.LEATHER_PANTS, 2f);
-                        put(Item.LEATHER_BOOTS, 1f);
-                        put(Item.CHAIN_HELMET, 1f);
-                        put(Item.CHAIN_CHESTPLATE, 5f);
-                        put(Item.CHAIN_LEGGINGS, 4f);
-                        put(Item.CHAIN_BOOTS, 1f);
-                        put(Item.GOLD_HELMET, 1f);
-                        put(Item.GOLD_CHESTPLATE, 5f);
-                        put(Item.GOLD_LEGGINGS, 3f);
-                        put(Item.GOLD_BOOTS, 1f);
-                        put(Item.IRON_HELMET, 2f);
-                        put(Item.IRON_CHESTPLATE, 6f);
-                        put(Item.IRON_LEGGINGS, 5f);
-                        put(Item.IRON_BOOTS, 2f);
-                        put(Item.DIAMOND_HELMET, 3f);
-                        put(Item.DIAMOND_CHESTPLATE, 8f);
-                        put(Item.DIAMOND_LEGGINGS, 6f);
-                        put(Item.DIAMOND_BOOTS, 3f);
-                    }
-                };
+                HashMap<Integer, Float> armorValues = new ArmorPoints();
 
                 float points = 0;
                 for (Item i : ((Player) player).getInventory().getArmorContents()) {
@@ -120,10 +109,17 @@ public class Zombie extends WalkingMonster implements EntityAgeable {
 
     @Override
     public boolean entityBaseTick(int tickDiff) {
+        if (getServer().getDifficulty() == 0) {
+            this.close();
+            return true;
+        }
+
         boolean hasUpdate = super.entityBaseTick(tickDiff);
 
         if (MobPlugin.getInstance().shouldMobBurn(level, this)) {
-            if (this.armor[0] == null || this.armor[0].getId() == 0) {
+            if (this.armor[0] == null) {
+                this.setOnFire(100);
+            } else if (this.armor[0].getId() == 0) {
                 this.setOnFire(100);
             }
         }
@@ -135,22 +131,18 @@ public class Zombie extends WalkingMonster implements EntityAgeable {
     public Item[] getDrops() {
         List<Item> drops = new ArrayList<>();
 
-        if (this.hasCustomName()) {
-            drops.add(Item.get(Item.NAME_TAG, 0, 1));
-        }
-
-        if (this.lastDamageCause instanceof EntityDamageByEntityEvent && !this.isBaby()) {
+        if (!this.isBaby()) {
             for (int i = 0; i < Utils.rand(0, 2); i++) {
                 drops.add(Item.get(Item.ROTTEN_FLESH, 0, 1));
             }
 
             if (this.tool != null) {
                 if (tool instanceof ItemSwordIron && Utils.rand(1, 3) == 1) {
-                    drops.add(Item.get(Item.IRON_SWORD, Utils.rand(200, 246), 1));
+                    drops.add(tool);
                 }
 
                 if (tool instanceof ItemShovelIron && Utils.rand(1, 3) != 1) {
-                    drops.add(Item.get(Item.IRON_SHOVEL, Utils.rand(200, 246), 1));
+                    drops.add(tool);
                 }
             }
 
@@ -183,16 +175,15 @@ public class Zombie extends WalkingMonster implements EntityAgeable {
 
         MobArmorEquipmentPacket pk = new MobArmorEquipmentPacket();
         pk.eid = this.getId();
+        pk.slots = this.armor;
 
         if (java.time.LocalDate.now().toString().contains("-10-31")) {
-            pk.slots[0] = new ItemBlock(Block.get(Block.PUMPKIN));
-        } else {
-            pk.slots = this.armor;
+            pk.slots[0] = new ItemBlock(Block.get(Block.JACK_O_LANTERN));
         }
 
         player.dataPacket(pk);
 
-        if (this.tool != null && Utils.rand(1, 10) == 1) {
+        if (this.tool != null) {
             MobEquipmentPacket pk2 = new MobEquipmentPacket();
             pk2.eid = this.getId();
             pk2.hotbarSlot = 0;
@@ -202,12 +193,48 @@ public class Zombie extends WalkingMonster implements EntityAgeable {
     }
 
     private void setRandomTool() {
-        if (Utils.rand(1, 3) == 1) {
-            this.tool = Item.get(Item.IRON_SWORD, 0, 1);
-            this.setDamage(new float[] { 0, 4, 6, 8 });
-        } else {
-            this.tool = Item.get(Item.IRON_SHOVEL, 0, 1);
-            this.setDamage(new float[] { 0, 3, 4, 5 });
+        if (Utils.rand(1, 10) == 5) {
+            if (Utils.rand(1, 3) == 1) {
+                this.tool = Item.get(Item.IRON_SWORD, Utils.rand(200, 246), 1);
+                this.setDamage(new float[]{0, 4, 6, 8});
+            } else {
+                this.tool = Item.get(Item.IRON_SHOVEL, Utils.rand(200, 246), 1);
+                this.setDamage(new float[]{0, 3, 4, 5});
+            }
+        }
+    }
+
+    @Override
+    public boolean attack(EntityDamageEvent ev) {
+        super.attack(ev);
+
+        if (!ev.isCancelled() && ev.getCause() == EntityDamageEvent.DamageCause.DROWNING) {
+            CreatureSpawnEvent cse = new CreatureSpawnEvent(EntityDrowned.NETWORK_ID, this, new CompoundTag(), CreatureSpawnEvent.SpawnReason.DROWNED);
+            level.getServer().getPluginManager().callEvent(cse);
+
+            if (cse.isCancelled()) {
+                this.close();
+                return true;
+            }
+
+            Entity ent = Entity.createEntity("Drowned", this);
+            if (ent != null) {
+                this.close();
+                ent.spawnToAll();
+            } else {
+                this.close();
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    public void saveNBT() {
+        super.saveNBT();
+
+        if (tool != null) {
+            this.namedTag.put("Item", NBTIO.putItemHelper(tool));
         }
     }
 }

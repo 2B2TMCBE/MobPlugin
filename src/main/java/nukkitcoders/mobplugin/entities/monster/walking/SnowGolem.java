@@ -5,7 +5,6 @@ import cn.nukkit.entity.Entity;
 import cn.nukkit.entity.EntityCreature;
 import cn.nukkit.entity.projectile.EntityProjectile;
 import cn.nukkit.entity.projectile.EntitySnowball;
-import cn.nukkit.event.entity.EntityDamageByEntityEvent;
 import cn.nukkit.event.entity.EntityShootBowEvent;
 import cn.nukkit.event.entity.ProjectileLaunchEvent;
 import cn.nukkit.item.Item;
@@ -61,8 +60,8 @@ public class SnowGolem extends WalkingMonster {
             this.attackDelay = 0;
 
             double f = 1.2;
-            double yaw = this.yaw + Utils.rand(-150.0, 150.0) / 10;
-            double pitch = this.pitch + Utils.rand(-75.0, 75.0) / 10;
+            double yaw = this.yaw + Utils.rand(-12.0, 12.0);
+            double pitch = this.pitch + Utils.rand(-7.0, 7.0);
             Location location = new Location(this.x + (-Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)) * 0.5), this.y + this.getEyeHeight(),
                     this.z + (Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)) * 0.5), yaw, pitch, this.level);
             Entity k = Entity.createEntity("Snowball", location, this);
@@ -101,14 +100,8 @@ public class SnowGolem extends WalkingMonster {
     public Item[] getDrops() {
         List<Item> drops = new ArrayList<>();
 
-        if (this.hasCustomName()) {
-            drops.add(Item.get(Item.NAME_TAG, 0, 1));
-        }
-
-        if (this.lastDamageCause instanceof EntityDamageByEntityEvent && !this.isBaby()) {
-            for (int i = 0; i < Utils.rand(0, 15); i++) {
-                drops.add(Item.get(Item.SNOWBALL, 0, 1));
-            }
+        for (int i = 0; i < Utils.rand(0, 15); i++) {
+            drops.add(Item.get(Item.SNOWBALL, 0, 1));
         }
 
         return drops.toArray(new Item[0]);

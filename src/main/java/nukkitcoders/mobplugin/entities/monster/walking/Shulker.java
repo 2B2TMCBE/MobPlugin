@@ -2,7 +2,6 @@ package nukkitcoders.mobplugin.entities.monster.walking;
 
 import cn.nukkit.entity.Entity;
 import cn.nukkit.event.entity.EntityDamageEvent;
-import cn.nukkit.event.entity.EntityDamageByEntityEvent;
 import cn.nukkit.event.entity.ProjectileLaunchEvent;
 import cn.nukkit.item.Item;
 import cn.nukkit.level.Location;
@@ -13,9 +12,6 @@ import cn.nukkit.nbt.tag.CompoundTag;
 import nukkitcoders.mobplugin.utils.Utils;
 import nukkitcoders.mobplugin.entities.monster.WalkingMonster;
 import nukkitcoders.mobplugin.entities.projectile.EntityShulkerBullet;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class Shulker extends WalkingMonster {
 
@@ -59,8 +55,8 @@ public class Shulker extends WalkingMonster {
             this.attackDelay = 0;
 
             double f = 0.5;
-            double yaw = this.yaw + Utils.rand(-150.0, 150.0) / 10;
-            double pitch = this.pitch + Utils.rand(-75.0, 75.0) / 10;
+            double yaw = this.yaw + Utils.rand(-12.0, 12.0);
+            double pitch = this.pitch + Utils.rand(-7.0, 7.0);
             Location pos = new Location(this.x - Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)) * 0.5, this.y + this.getHeight() - 0.18,
                     this.z + Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)) * 0.5, yaw, pitch, this.level);
             Entity k = Entity.createEntity("ShulkerBullet", pos, this);
@@ -98,17 +94,7 @@ public class Shulker extends WalkingMonster {
 
     @Override
     public Item[] getDrops() {
-        List<Item> drops = new ArrayList<>();
-
-        if (this.hasCustomName()) {
-            drops.add(Item.get(Item.NAME_TAG, 0, 1));
-        }
-
-        if (this.lastDamageCause instanceof EntityDamageByEntityEvent && !this.isBaby() && Utils.rand(1, 2) == 1) {
-            drops.add(Item.get(Item.SHULKER_SHELL, 0, 1));
-        }
-
-        return drops.toArray(new Item[0]);
+        return new Item[]{Item.get(Item.SHULKER_SHELL, 0, Utils.rand(0, 1))};
     }
 
     @Override
@@ -118,5 +104,15 @@ public class Shulker extends WalkingMonster {
 
     @Override
     public void knockBack(Entity attacker, double damage, double x, double z, double base) {
+    }
+
+    @Override
+    public boolean entityBaseTick(int tickDiff) {
+        if (getServer().getDifficulty() == 0) {
+            this.close();
+            return true;
+        }
+
+        return super.entityBaseTick(tickDiff);
     }
 }

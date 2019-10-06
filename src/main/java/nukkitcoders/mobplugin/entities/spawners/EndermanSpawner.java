@@ -4,7 +4,6 @@ import cn.nukkit.Player;
 import cn.nukkit.block.Block;
 import cn.nukkit.level.Level;
 import cn.nukkit.level.Position;
-import cn.nukkit.utils.Config;
 import nukkitcoders.mobplugin.AutoSpawnTask;
 import nukkitcoders.mobplugin.MobPlugin;
 import nukkitcoders.mobplugin.entities.autospawn.AbstractEntitySpawner;
@@ -24,7 +23,7 @@ public class EndermanSpawner extends AbstractEntitySpawner {
     public SpawnResult spawn(Player player, Position pos, Level level) {
         SpawnResult result = SpawnResult.OK;
 
-        if (Utils.rand(1, 4) != 1 && !level.getName().equals("end")) {
+        if (Utils.rand(1, level.getName().equals("nether") ? 10 : 7) != 1 && !level.getName().equals("end")) {
             return SpawnResult.SPAWN_DENIED;
         }
 

@@ -1,7 +1,10 @@
 package nukkitcoders.mobplugin;
 
+import cn.nukkit.Player;
+import cn.nukkit.Server;
 import cn.nukkit.block.Block;
 import cn.nukkit.entity.Entity;
+import cn.nukkit.event.entity.CreatureSpawnEvent;
 import cn.nukkit.level.Level;
 import cn.nukkit.level.Position;
 import cn.nukkit.math.Vector3;
@@ -48,7 +51,7 @@ public class AutoSpawnTask extends Thread {
     public void run() {
         if (plugin.getServer().getOnlinePlayers().size() > 0) {
             for (IEntitySpawner spawner : entitySpawners) {
-                spawner.spawn(plugin.getServer().getOnlinePlayers().values());
+                spawner.spawn();
             }
         }
     }
@@ -130,7 +133,7 @@ public class AutoSpawnTask extends Thread {
     public boolean entitySpawnAllowed(Level level, int networkId, Vector3 pos) {
         int count = 0;
         for (Entity entity : level.getEntities()) {
-            if (entity.isAlive() && entity.getNetworkId() == networkId && new Vector3(pos.x, entity.y, pos.z).distance(entity) < 100) {
+            if (entity.isAlive() && entity.getNetworkId() == networkId && new Vector3(pos.x, entity.y, pos.z).distanceSquared(entity) < 10000) {
                 count++;
             }
         }
@@ -141,10 +144,28 @@ public class AutoSpawnTask extends Thread {
     public BaseEntity createEntity(Object type, Position pos) {
         BaseEntity entity = (BaseEntity) Entity.createEntity((String) type, pos);
         if (entity != null) {
-            entity.spawnToAll();
+            if (!entity.isInsideOfSolid() && !tooNearOfPlayer(pos)) {
+                CreatureSpawnEvent ev = new CreatureSpawnEvent(entity.getNetworkId(), pos, entity.namedTag, CreatureSpawnEvent.SpawnReason.NATURAL);
+                Server.getInstance().getPluginManager().callEvent(ev);
+                if (!ev.isCancelled()) {
+                    entity.spawnToAll();
+                } else {
+                    entity.close();
+                }
+            } else {
+                entity.close();
+            }
         }
-
         return entity;
+    }
+
+    private boolean tooNearOfPlayer(Position pos) {
+        for (Player p : pos.getLevel().getPlayers().values()) {
+            if (p.distanceSquared(pos) < 144) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public int getRandomSafeXZCoord(int degree, int safeDegree, int correctionDegree) {

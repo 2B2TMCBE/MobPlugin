@@ -4,7 +4,6 @@ import cn.nukkit.Player;
 import cn.nukkit.block.Block;
 import cn.nukkit.level.Level;
 import cn.nukkit.level.Position;
-import cn.nukkit.utils.Config;
 import nukkitcoders.mobplugin.AutoSpawnTask;
 import nukkitcoders.mobplugin.MobPlugin;
 import nukkitcoders.mobplugin.entities.autospawn.AbstractEntitySpawner;
@@ -26,7 +25,7 @@ public class WitchSpawner extends AbstractEntitySpawner {
         int biomeId = level.getBiomeId((int) pos.x, (int) pos.z);
         int blockId = level.getBlockIdAt((int) pos.x, (int) pos.y, (int) pos.z);
 
-        if (Utils.rand(1, 4) != 1 && biomeId != 6 && biomeId != 134) {
+        if (Utils.rand(1, 5) != 1 && biomeId != 6 && biomeId != 134) {
             return SpawnResult.SPAWN_DENIED;
         }
 

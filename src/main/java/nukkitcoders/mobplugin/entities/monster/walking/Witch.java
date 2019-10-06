@@ -5,7 +5,6 @@ import cn.nukkit.entity.Entity;
 import cn.nukkit.entity.EntityCreature;
 import cn.nukkit.entity.item.EntityPotion;
 import cn.nukkit.event.entity.EntityDamageEvent;
-import cn.nukkit.event.entity.EntityDamageByEntityEvent;
 import cn.nukkit.event.entity.ProjectileLaunchEvent;
 import cn.nukkit.item.Item;
 import cn.nukkit.level.Location;
@@ -24,8 +23,6 @@ import java.util.List;
 public class Witch extends WalkingMonster {
 
     public static final int NETWORK_ID = 45;
-
-    private static final int ATTACK_TICKS = 20;
 
     public Witch(FullChunk chunk, CompoundTag nbt) {
         super(chunk, nbt);
@@ -47,11 +44,6 @@ public class Witch extends WalkingMonster {
     }
 
     @Override
-    public double getSpeed() {
-        return 1.0;
-    }
-
-    @Override
     protected void initEntity() {
         super.initEntity();
         this.setMaxHealth(26);
@@ -61,7 +53,7 @@ public class Witch extends WalkingMonster {
     public boolean targetOption(EntityCreature creature, double distance) {
         if (creature instanceof Player) {
             Player player = (Player) creature;
-            return !player.closed && player.spawned && player.isAlive() && player.isSurvival() && distance <= 100;
+            return !player.closed && player.spawned && player.isAlive() && (player.isSurvival() || player.isAdventure()) && distance <= 100;
         }
         return creature.isAlive() && !creature.closed && distance <= 81;
     }
@@ -74,13 +66,12 @@ public class Witch extends WalkingMonster {
 
     @Override
     public void attackEntity(Entity player) {
-        if (this.attackDelay > ATTACK_TICKS && this.distanceSquared(player) <= 20) {
+        if (this.attackDelay > 60 && Utils.rand(1, 3) == 2 && this.distanceSquared(player) <= 60) {
             this.attackDelay = 0;
             if (player.isAlive() && !player.closed) {
 
                 double f = 1;
-                double yaw = this.yaw + Utils.rand(-150.0, 150.0) / 10;
-                double pitch = this.pitch + Utils.rand(-75.0, 75.0) / 10;
+                double yaw = this.yaw + Utils.rand(-5.0, 5.0);
                 Location pos = new Location(this.x - Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)) * 0.5, this.y + this.getEyeHeight(),
                         this.z + Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)) * 0.5, yaw, pitch, this.level);
 
@@ -114,36 +105,30 @@ public class Witch extends WalkingMonster {
     public Item[] getDrops() {
         List<Item> drops = new ArrayList<>();
 
-        if (this.hasCustomName()) {
-            drops.add(Item.get(Item.NAME_TAG, 0, 1));
+        if (Utils.rand(1, 4) == 1) {
+            drops.add(Item.get(Item.STICK, 0, Utils.rand(0, 2)));
         }
 
-        if (this.lastDamageCause instanceof EntityDamageByEntityEvent && !this.isBaby()) {
-            if (Utils.rand(1, 4) == 1) {
-                drops.add(Item.get(Item.STICK, 0, Utils.rand(0, 2)));
-            }
-
-            if (Utils.rand(1, 3) == 1) {
-                switch (Utils.rand(1, 6)) {
-                    case 1:
-                        drops.add(Item.get(Item.BOTTLE, 0, Utils.rand(0, 2)));
-                        break;
-                    case 2:
-                        drops.add(Item.get(Item.GLOWSTONE_DUST, 0, Utils.rand(0, 2)));
-                        break;
-                    case 3:
-                        drops.add(Item.get(Item.GUNPOWDER, 0, Utils.rand(0, 2)));
-                        break;
-                    case 4:
-                        drops.add(Item.get(Item.REDSTONE, 0, Utils.rand(0, 2)));
-                        break;
-                    case 5:
-                        drops.add(Item.get(Item.SPIDER_EYE, 0, Utils.rand(0, 2)));
-                        break;
-                    case 6:
-                        drops.add(Item.get(Item.SUGAR, 0, Utils.rand(0, 2)));
-                        break;
-                }
+        if (Utils.rand(1, 3) == 1) {
+            switch (Utils.rand(1, 6)) {
+                case 1:
+                    drops.add(Item.get(Item.BOTTLE, 0, Utils.rand(0, 2)));
+                    break;
+                case 2:
+                    drops.add(Item.get(Item.GLOWSTONE_DUST, 0, Utils.rand(0, 2)));
+                    break;
+                case 3:
+                    drops.add(Item.get(Item.GUNPOWDER, 0, Utils.rand(0, 2)));
+                    break;
+                case 4:
+                    drops.add(Item.get(Item.REDSTONE, 0, Utils.rand(0, 2)));
+                    break;
+                case 5:
+                    drops.add(Item.get(Item.SPIDER_EYE, 0, Utils.rand(0, 2)));
+                    break;
+                case 6:
+                    drops.add(Item.get(Item.SUGAR, 0, Utils.rand(0, 2)));
+                    break;
             }
         }
 
@@ -152,6 +137,16 @@ public class Witch extends WalkingMonster {
 
     @Override
     public int getKillExperience() {
-        return this.isBaby() ? 0 : 5;
+        return 5;
+    }
+
+    @Override
+    public boolean entityBaseTick(int tickDiff) {
+        if (getServer().getDifficulty() == 0) {
+            this.close();
+            return true;
+        }
+
+        return super.entityBaseTick(tickDiff);
     }
 }
